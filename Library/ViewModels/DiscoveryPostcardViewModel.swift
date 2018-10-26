@@ -137,9 +137,6 @@ public protocol DiscoveryPostcardViewModelOutputs {
   /// Emits a boolean that determines if the project stats should be hidden.
   var projectStatsStackViewHidden: Signal<Bool, NoError> { get }
 
-  /// Emits a boolean that determines if the save button should be enabled.
-  var saveButtonEnabled: Signal<Bool, NoError> { get }
-
   /// Emits a boolean that determines if the save button should be selected.
   var saveButtonSelected: Signal<Bool, NoError> { get }
 
@@ -311,17 +308,13 @@ public final class DiscoveryPostcardViewModel: DiscoveryPostcardViewModelType,
       )
       .ignoreValues()
 
-    let isLoading = MutableProperty(false)
-
     let projectOnSaveButtonToggle = configuredProject
       .takeWhen(.merge(loggedInUserTappedSaveButton, userLoginAfterTappingSaveButton))
-      .on(event: { _ in isLoading.value = true })
 
     let saveProjectEvent = projectOnSaveButtonToggle
       .switchMap { project in
         AppEnvironment.current.apiService.toggleStar(project)
           .ksr_delay(AppEnvironment.current.apiDelayInterval, on: AppEnvironment.current.scheduler)
-          .on(terminated: { isLoading.value = false })
           .materialize()
     }
 
@@ -349,9 +342,6 @@ public final class DiscoveryPostcardViewModel: DiscoveryPostcardViewModelType,
       projectSavedFromNotification.map { cache(project: $0, shouldToggle: true) },
       projectOnSaveError.map { cache(project: $0, shouldToggle: true) }
     )
-
-    self.saveButtonEnabled = isLoading.signal.map(negate)
-      .skipRepeats()
 
     self.notifyDelegateShowLoginTout = loggedOutUserTappedSaveButton
 
@@ -457,7 +447,6 @@ public final class DiscoveryPostcardViewModel: DiscoveryPostcardViewModelType,
   public var projectCategoryViewHidden: Signal<Bool, NoError>
   public var projectCategoryStackViewHidden: Signal<Bool, NoError>
   public let projectStateTitleLabelColor: Signal<UIColor, NoError>
-  public let saveButtonEnabled: Signal<Bool, NoError>
   public let saveButtonSelected: Signal<Bool, NoError>
   public let showNotificationDialog: Signal<Notification, NoError>
   public let socialImageURL: Signal<URL?, NoError>

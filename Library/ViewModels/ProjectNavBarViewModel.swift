@@ -47,9 +47,6 @@ public protocol ProjectNavBarViewModelOutputs {
   /// Emits the name of the project
   var projectName: Signal<String, NoError> { get }
 
-  /// Emits a boolean that determines if the save button is enabled.
-  var saveButtonEnabled: Signal<Bool, NoError> { get }
-
   /// Emits a boolean that determines if the save button is selected.
   var saveButtonSelected: Signal<Bool, NoError> { get }
 
@@ -113,16 +110,10 @@ ProjectNavBarViewModelInputs, ProjectNavBarViewModelOutputs {
       .scan(nil) { accum, project in (accum ?? project) |> toggleSaveLens }
       .skipNil()
 
-    let isLoading = MutableProperty(false)
-
     let projectOnSaveButtonToggleAndSuccess = projectOnSaveButtonToggle
       .switchMap { project in
         AppEnvironment.current.apiService.toggleStar(project)
           .ksr_delay(AppEnvironment.current.apiDelayInterval, on: AppEnvironment.current.scheduler)
-          .on(
-            starting: { isLoading.value = true },
-            terminated: { isLoading.value = false}
-          )
           .map { ($0.project, success: true) }
           .flatMapError { _ in .init(value: (project, success: false)) }
     }
@@ -178,9 +169,6 @@ ProjectNavBarViewModelInputs, ProjectNavBarViewModelOutputs {
       self.projectVideoDidStartProperty.signal.mapConst(true),
       self.projectVideoDidFinishProperty.signal.mapConst(false)
     )
-
-    self.saveButtonEnabled = isLoading.signal.map(negate)
-      .skipRepeats()
 
     let projectImageIsVisible = Signal.merge(
       self.projectImageIsVisibleProperty.signal,
@@ -295,7 +283,6 @@ ProjectNavBarViewModelInputs, ProjectNavBarViewModelOutputs {
   public let navBarShadowVisible: Signal<Bool, NoError>
   public let postNotificationWithProject: Signal<Project, NoError>
   public let projectName: Signal<String, NoError>
-  public let saveButtonEnabled: Signal<Bool, NoError>
   public let saveButtonSelected: Signal<Bool, NoError>
   public let showProjectSavedPrompt: Signal<Void, NoError>
   public let saveButtonAccessibilityValue: Signal<String, NoError>
