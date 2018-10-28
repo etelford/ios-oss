@@ -131,7 +131,8 @@ ProjectNavBarViewModelInputs, ProjectNavBarViewModelOutputs {
       configuredProject,
       projectOnSaveButtonToggle,
       projectOnSaveButtonToggleSuccess,
-      revertSaveButtonToggle)
+      revertSaveButtonToggle
+    )
 
     self.categoryButtonText = configuredProject.map(Project.lens.category.name.view)
       .skipRepeats()

@@ -108,7 +108,7 @@ internal final class DiscoveryPostcardViewModelTests: TestCase {
 
     self.vm.inputs.configureWith(project: project, category: nil)
     self.vm.inputs.saveButtonTapped()
-    self.scheduler.advance()
+    self.scheduler.advance(by: .seconds(1))
     self.notifyDelegateShowSaveAlert.assertValueCount(1)
   }
 
@@ -143,7 +143,7 @@ internal final class DiscoveryPostcardViewModelTests: TestCase {
     let project = Project.template
       |> Project.lens.personalization.isStarred .~ true
     let toggleSaveResponse = .template
-      |> StarEnvelope.lens.project .~ project
+      |> StarEnvelope.lens.project .~ (project |> Project.lens.personalization.isStarred .~ false)
 
     withEnvironment(apiService: MockService(toggleStarResponse: toggleSaveResponse),
                     currentUser: .template) {
@@ -156,9 +156,53 @@ internal final class DiscoveryPostcardViewModelTests: TestCase {
 
         self.saveButtonSelected.assertValues([true, false], "Emits false immediately.")
 
-        self.scheduler.advance()
+        self.scheduler.advance(by: .seconds(1))
 
-        self.saveButtonSelected.assertValues([true, false], "Save button remains deselected after request.")
+        self.saveButtonSelected.assertValues(
+          [true, false],
+          "Save button remains deselected after request."
+        )
+    }
+  }
+
+  func testTappedSaveButton_LoggedIn_User_Debouncing() {
+    let project = Project.template
+      |> Project.lens.personalization.isStarred .~ true
+
+    let toggleSaveResponse = .template
+      |> StarEnvelope.lens.project .~ (project |> Project.lens.personalization.isStarred .~ false)
+
+    withEnvironment(
+      apiService: MockService(toggleStarResponse: toggleSaveResponse),
+      currentUser: .template) {
+
+        self.vm.inputs.configureWith(project: project, category: nil)
+
+        self.saveButtonSelected.assertValues([true], "Save button is selected at first.")
+
+        self.vm.inputs.saveButtonTapped()
+
+        self.saveButtonSelected.assertValues([true, false], "Emits false immediately.")
+
+        self.vm.inputs.saveButtonTapped()
+        self.scheduler.advance(by: .milliseconds(500))
+
+        self.vm.inputs.saveButtonTapped()
+        self.scheduler.advance(by: .milliseconds(500))
+
+        self.vm.inputs.saveButtonTapped()
+        self.scheduler.advance(by: .milliseconds(500))
+
+        self.saveButtonSelected.assertValues(
+          [true, false, true, false, true], "State flips back and forth as button is tapped."
+        )
+
+        self.scheduler.advance(by: .seconds(1))
+
+        self.saveButtonSelected.assertValues(
+          [true, false, true, false, true, false],
+          "Network call is made after 1 second of no taps, value from response is always used"
+        )
     }
   }
 
@@ -166,7 +210,7 @@ internal final class DiscoveryPostcardViewModelTests: TestCase {
     let project = Project.template
       |> Project.lens.personalization.isStarred .~ false
     let toggleSaveResponse = .template
-      |> StarEnvelope.lens.project .~ project
+      |> StarEnvelope.lens.project .~ (project |> Project.lens.personalization.isStarred .~ true)
 
       withEnvironment(apiService: MockService(toggleStarResponse: toggleSaveResponse)) {
 
@@ -188,7 +232,7 @@ internal final class DiscoveryPostcardViewModelTests: TestCase {
         self.saveButtonSelected.assertValues([false, true],
                                               "Once logged in, the save button is selected immediately.")
 
-        self.scheduler.advance()
+        self.scheduler.advance(by: .seconds(1))
 
         self.saveButtonSelected.assertValues([false, true],
                                              "Save button stays selected after API request.")
@@ -202,7 +246,7 @@ internal final class DiscoveryPostcardViewModelTests: TestCase {
           self.saveButtonSelected.assertValues([false, true, false],
                                                "Save button is deselected.")
 
-          self.scheduler.advance()
+          self.scheduler.advance(by: .seconds(1))
 
           self.saveButtonSelected.assertValues([false, true, false],
                                                "The save button remains unselected.")
@@ -549,7 +593,7 @@ internal final class DiscoveryPostcardViewModelTests: TestCase {
     withEnvironment(currentUser: user) {
       self.vm.inputs.configureWith(project: project, category: nil)
       self.vm.inputs.saveButtonTapped()
-      self.scheduler.advance()
+      self.scheduler.advance(by: .seconds(1))
 
       self.showNotificationDialog.assertDidEmitValue()
     }
@@ -563,7 +607,7 @@ internal final class DiscoveryPostcardViewModelTests: TestCase {
     withEnvironment(currentUser: user) {
       self.vm.inputs.configureWith(project: project, category: nil)
       self.vm.inputs.saveButtonTapped()
-      self.scheduler.advance()
+      self.scheduler.advance(by: .seconds(1))
 
       self.showNotificationDialog.assertDidNotEmitValue()
     }
